@@ -1,0 +1,15 @@
+{
+  "entryPoint": "index.ts",
+  "name": "Magnet ",
+  "images": [
+    {
+      "path": "images/IMG_0244.png",
+      "isPrimary": true
+    }
+  ],
+  "metadata": {
+    "createdAt": "2026-11-18T14:17:36.573Z",
+    "createdWith": "cadit-web",
+    "designId": "tLpbjzbnHcodM5e"
+  }
+}
