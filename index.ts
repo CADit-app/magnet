@@ -36,7 +36,7 @@ export default defineParams({
     },
     thickness: {
       type: 'slider',
-      default: 1.5,          // ← set to 1.5 mm
+      default: 1.5,
       min: 1.3,
       max: 4,
       step: 0.1,
@@ -54,7 +54,7 @@ export default defineParams({
     },
     magnetDiameter: {
       type: 'slider',
-      default: 2.2,          // ← slightly over 2 mm
+      default: 2.2,
       min: 1.8,
       max: 6,
       step: 0.1,
@@ -70,7 +70,7 @@ export default defineParams({
     },
     magnetDepth: {
       type: 'slider',
-      default: 1.15,         // ← for 1 mm thick magnet
+      default: 1.15,
       min: 0.9,
       max: 2.0,
       step: 0.05,
@@ -91,6 +91,15 @@ export default defineParams({
       max: 25,
       step: 1,
       label: 'Magnet spacing (mm)',
+    },
+    // New: how far apart the characters are placed
+    pieceGap: {
+      type: 'slider',
+      default: 8,
+      min: 2,
+      max: 20,
+      step: 1,
+      label: 'Gap between characters (mm)',
     },
   },
 
@@ -115,6 +124,11 @@ export default defineParams({
     if (!pieces.length) return Manifold.cube([20, 20, params.thickness], true);
 
     const results: Manifold[] = [];
+    const cellSize = params.targetWidth + params.pieceGap; // space each character takes
+    let index = 0;
+
+    // Arrange in a roughly square grid
+    const cols = Math.ceil(Math.sqrt(pieces.length));
 
     for (const piece of pieces) {
       const b = piece.bounds();
@@ -122,9 +136,11 @@ export default defineParams({
       const h = b.max[1] - b.min[1];
       if (w < 3 || h < 3) continue;
 
+      // Scale to target width
       const scale = params.targetWidth / w;
       let cs = piece.scale([scale, scale]);
 
+      // Center the character on itself
       const nb = cs.bounds();
       const cx = (nb.min[0] + nb.max[0]) / 2;
       const cy = (nb.min[1] + nb.max[1]) / 2;
@@ -132,6 +148,7 @@ export default defineParams({
 
       let body = cs.extrude(params.thickness);
 
+      // Add magnets
       const positions: [number, number][] = [];
       const half = params.spacing / 2;
 
@@ -153,11 +170,20 @@ export default defineParams({
         body = body.subtract(pocket);
       }
 
+      // Place this character in the grid
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+      const xPos = col * cellSize;
+      const yPos = -row * cellSize; // negative so they go downward
+
+      body = body.translate([xPos, yPos, 0]);
       results.push(body);
+      index++;
     }
 
     if (!results.length) return Manifold.cube([20, 20, params.thickness], true);
 
+    // Combine everything
     let combined = results[0];
     for (let i = 1; i < results.length; i++) {
       combined = combined.add(results[i]);
