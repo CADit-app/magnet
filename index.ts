@@ -22,7 +22,7 @@ export default defineParams({
       type: 'slider',
       default: 45,
       min: 20,
-      max: 80,
+      max: 120,
       step: 1,
       label: 'Target size (mm) - based on tallest character',
     },
@@ -42,16 +42,8 @@ export default defineParams({
       step: 0.1,
       label: 'Thickness (mm)',
     },
-    magnetCount: {
-      type: 'choice',
-      default: '1',
-      options: [
-        { value: '1', label: '1 magnet' },
-        { value: '2h', label: '2 horizontal' },
-        { value: '2v', label: '2 vertical' },
-      ],
-      label: 'Magnets per character',
-    },
+
+    // ----- Magnets -----
     magnetDiameter: {
       type: 'slider',
       default: 2.2,
@@ -74,7 +66,7 @@ export default defineParams({
       min: 0.9,
       max: 2.0,
       step: 0.05,
-      label: 'Magnet depth (mm)',
+      label: 'Magnet depth (mm) - same on all characters',
     },
     magnetClearance: {
       type: 'number',
@@ -84,14 +76,23 @@ export default defineParams({
       step: 0.02,
       label: 'Clearance (mm)',
     },
-    spacing: {
+    magnetSpacing: {
       type: 'slider',
       default: 12,
       min: 6,
       max: 25,
       step: 1,
-      label: 'Magnet spacing (mm)',
+      label: 'Spacing between magnets when 2 are used (mm)',
     },
+    autoMagnetThreshold: {
+      type: 'slider',
+      default: 40,
+      min: 25,
+      max: 60,
+      step: 1,
+      label: 'Add 2nd magnet when wider than (mm)',
+    },
+
     pieceGap: {
       type: 'slider',
       default: 8,
@@ -126,7 +127,7 @@ export default defineParams({
       return Manifold.cube([20, 20, params.thickness], true);
     }
 
-    // 3. First pass – find valid pieces and the tallest one
+    // 3. First pass – collect valid pieces + find tallest
     const validPieces: CrossSection[] = [];
     let maxHeight = 0;
 
@@ -134,7 +135,7 @@ export default defineParams({
       const b = piece.bounds();
       const w = b.max[0] - b.min[0];
       const h = b.max[1] - b.min[1];
-      if (w < 3 || h < 3) continue; // skip tiny noise
+      if (w < 3 || h < 3) continue;
 
       validPieces.push(piece);
       if (h > maxHeight) maxHeight = h;
@@ -144,7 +145,7 @@ export default defineParams({
       return Manifold.cube([20, 20, params.thickness], true);
     }
 
-    // 4. One global scale so relative sizes stay correct
+    // 4. One global scale (keeps relative sizes correct)
     const globalScale = params.targetWidth / maxHeight;
 
     const results: Manifold[] = [];
@@ -152,30 +153,39 @@ export default defineParams({
     const cols = Math.ceil(Math.sqrt(validPieces.length));
     let index = 0;
 
-    // 5. Process every character with the same scale
+    // Shared magnet values (uniform across all characters)
+    const dia = params.magnetDiameter * params.magnetScale;
+    const radius = (dia + params.magnetClearance * 2) / 2;
+    const pocketH = params.magnetDepth + 0.2;
+
+    // 5. Process every character
     for (const piece of validPieces) {
       let cs = piece.scale([globalScale, globalScale]);
 
-      // Center the character
+      // Center it
       const nb = cs.bounds();
       const cx = (nb.min[0] + nb.max[0]) / 2;
       const cy = (nb.min[1] + nb.max[1]) / 2;
       cs = cs.translate([-cx, -cy]);
 
+      // Actual width of this character after scaling
+      const charWidth = nb.max[0] - nb.min[0];
+
       let body = cs.extrude(params.thickness);
 
-      // Add magnets
+      // ----- Automatic magnet decision -----
       const positions: [number, number][] = [];
-      const half = params.spacing / 2;
+      const half = params.magnetSpacing / 2;
 
-      if (params.magnetCount === '1') positions.push([0, 0]);
-      else if (params.magnetCount === '2h') positions.push([-half, 0], [half, 0]);
-      else if (params.magnetCount === '2v') positions.push([0, -half], [0, half]);
+      if (charWidth > params.autoMagnetThreshold) {
+        // Wide character → 2 magnets horizontal
+        positions.push([-half, 0], [half, 0]);
+      } else {
+        // Narrow character → 1 magnet in center
+        positions.push([0, 0]);
+      }
 
-      const dia = params.magnetDiameter * params.magnetScale;
-      const radius = (dia + params.magnetClearance * 2) / 2;
-      const pocketH = params.magnetDepth + 0.2;
-
+      // Cut the pockets (same depth on every character)
       for (const [x, y] of positions) {
         const pocket = Manifold.cylinder(pocketH, radius, radius, 48)
           .translate([
@@ -186,7 +196,7 @@ export default defineParams({
         body = body.subtract(pocket);
       }
 
-      // Place in a grid so they are not stacked
+      // Place in grid
       const col = index % cols;
       const row = Math.floor(index / cols);
       body = body.translate([col * cellSize, -row * cellSize, 0]);
@@ -195,7 +205,7 @@ export default defineParams({
       index++;
     }
 
-    // 6. Combine everything
+    // 6. Combine
     let combined = results[0];
     for (let i = 1; i < results.length; i++) {
       combined = combined.add(results[i]);
