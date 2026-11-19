@@ -1,6 +1,6 @@
 {
   "name": "@cadit-app/magnet",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,13 +28,6 @@
   "homepage": "https://github.com/CADit-app/magnet#readme",
   "bugs": {
     "url": "https://github.com/CADit-app/magnet/issues"
-  },
-  "dependencies": {
-    "@cadit-app/image-extrude": "^0.5.0",
-    "@cadit-app/script-params": "^0.5.4"
-  },
-  "peerDependencies": {
-    "manifold-3d": "^3.0.0"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
