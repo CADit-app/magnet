@@ -22,7 +22,7 @@ export default defineParams({
       type: 'slider',
       default: 45,
       min: 20,
-      max: 120,
+      max: 200,
       step: 1,
       label: 'Target size (mm) - based on tallest character',
     },
@@ -46,7 +46,7 @@ export default defineParams({
     // ----- Magnets -----
     magnetDiameter: {
       type: 'slider',
-      default: 2.2,
+      default: 4,
       min: 1.8,
       max: 6,
       step: 0.1,
@@ -62,9 +62,9 @@ export default defineParams({
     },
     magnetDepth: {
       type: 'slider',
-      default: 1.15,
+      default: 2,
       min: 0.9,
-      max: 2.0,
+      max: 4.0,
       step: 0.05,
       label: 'Magnet depth (mm) - same on all characters',
     },
